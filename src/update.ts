@@ -294,7 +294,15 @@ async function installLatest(options: {
   return version;
 }
 
-async function readInstalledVersion(name: string, configDir: string): Promise<string | null> {
+/**
+ * Read the installed version of a package from a config directory's
+ * node_modules. Both `bun add --cwd <dir>` and
+ * `npm install --prefix <dir> --no-save` place packages at
+ * `<dir>/node_modules/<name>/package.json` (scoped packages under
+ * `<dir>/node_modules/@scope/name/package.json`). Returns null when the
+ * version can't be read (logged by the caller).
+ */
+export async function readInstalledVersion(name: string, configDir: string): Promise<string | null> {
   try {
     const packagePath = name.startsWith('@')
       ? join(configDir, 'node_modules', ...name.split('/'), 'package.json')
