@@ -109,10 +109,9 @@ export async function runAutoUpdate(options: AutoUpdateOptions = {}): Promise<vo
       return;
     }
 
-    await writeThrottleState({ ...state, lastRun: now }, { debug, configDir });
-
     const rawConfig = await readConfig(configPath);
     if (!rawConfig) {
+      await writeThrottleState({ ...state, lastRun: now }, { debug, configDir });
       log('[auto-update] No config found, skipping.');
       return;
     }
