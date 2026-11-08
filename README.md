@@ -133,6 +133,17 @@ For persistent overrides without environment variables, create:
 5. **Sync**: Updates `opencode.json` with the new versions (unless pinning is
    enabled).
 
+### State Files
+
+The plugin stores its state alongside the rest of your OpenCode configuration in
+`~/.config/opencode/`:
+
+| File | Purpose |
+| :--- | :--- |
+| `.auto-update.lock` | Lock file preventing concurrent update runs. |
+| `.auto-update.json` | Throttle state (last run timestamp). |
+| `.auto-update-history.json` | Circular history of the last 5 updates, including metadata and timestamps. |
+
 ## ❓ Troubleshooting
 
 - **Updates not running?** Check if `OPENCODE_AUTO_UPDATE_DISABLED` is set.
