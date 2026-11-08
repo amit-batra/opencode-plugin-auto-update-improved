@@ -37,14 +37,24 @@ function resolvePaths(configDir?: string): LockPaths {
 }
 
 /**
+ * Compute whether an already-parsed lock is stale (older than 2 hours).
+ *
+ * Pure helper: no IO, so callers that have already read the lock file can
+ * reuse the same data instead of re-reading (avoids a TOCTOU window).
+ */
+export function isStaleLockData(lockData: LockData, now: number = Date.now()): boolean {
+  const age = now - lockData.timestamp;
+  return age > STALE_LOCK_MS;
+}
+
+/**
  * Check if a lock file is stale (older than 2 hours)
  */
 export async function isLockStale(lockPath: string): Promise<boolean> {
   try {
     const content = await readFile(lockPath, 'utf-8');
     const lockData: LockData = JSON.parse(content);
-    const age = Date.now() - lockData.timestamp;
-    return age > STALE_LOCK_MS;
+    return isStaleLockData(lockData);
   } catch (error) {
     // If file doesn't exist or can't be read, it's not stale
     return false;
@@ -76,8 +86,8 @@ export async function acquireLock(options: {
       const existingLock = await readFile(lockFile, 'utf-8');
       const lockData: LockData = JSON.parse(existingLock);
       
-      // Check if lock is stale
-      const stale = await isLockStale(lockFile);
+      // Check staleness from the already-read data (no second read)
+      const stale = isStaleLockData(lockData);
       
       if (stale && force) {
         if (debug) {
