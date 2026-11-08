@@ -7,7 +7,7 @@
 
 import { readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { homedir, hostname as osHostname } from 'node:os';
+import { homedir } from 'node:os';
 
 const DEFAULT_CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const STALE_LOCK_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -15,12 +15,10 @@ const STALE_LOCK_MS = 2 * 60 * 60 * 1000; // 2 hours
 export interface LockData {
   pid: number;
   timestamp: number;
-  hostname: string;
 }
 
 export interface ThrottleState {
   lastRun?: number;
-  lastSuccess?: number;
 }
 
 interface LockPaths {
@@ -106,7 +104,6 @@ export async function acquireLock(options: {
     const lockData: LockData = {
       pid: process.pid,
       timestamp: Date.now(),
-      hostname: await getHostname(),
     };
 
     await writeFile(lockFile, JSON.stringify(lockData, null, 2), 'utf-8');
@@ -197,17 +194,5 @@ export async function writeThrottleState(
       console.error('[throttle] Failed to write state:', error);
     }
     throw error;
-  }
-}
-
-/**
- * Get the hostname for lock identification
- */
-async function getHostname(): Promise<string> {
-  try {
-    return osHostname();
-  } catch {
-    // Fallback to 'unknown' if hostname is not available
-    return 'unknown';
   }
 }

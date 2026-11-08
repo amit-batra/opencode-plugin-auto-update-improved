@@ -40,7 +40,6 @@ describe('stale lock recovery', () => {
     await writeLock(configDir, {
       pid: FOREIGN_PID,
       timestamp: Date.now(),
-      hostname: 'host',
     });
 
     const acquired = await acquireLock({ debug: false, configDir });
@@ -55,7 +54,6 @@ describe('stale lock recovery', () => {
     await writeLock(configDir, {
       pid: FOREIGN_PID,
       timestamp: Date.now(),
-      hostname: 'host',
     });
 
     const acquired = await acquireLock({ force: true, debug: false, configDir });
@@ -70,7 +68,6 @@ describe('stale lock recovery', () => {
     await writeLock(configDir, {
       pid: FOREIGN_PID,
       timestamp: Date.now() - STALE_LOCK_MS - 60_000,
-      hostname: 'host',
     });
 
     const acquired = await acquireLock({ force: true, debug: false, configDir });
@@ -86,7 +83,6 @@ describe('stale lock recovery', () => {
     await writeLock(configDir, {
       pid: FOREIGN_PID,
       timestamp: Date.now() - STALE_LOCK_MS - 60_000,
-      hostname: 'host',
     });
 
     const acquired = await acquireLock({ force: false, debug: false, configDir });
