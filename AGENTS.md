@@ -24,10 +24,13 @@ Lint/Format:
 - No lint or formatter configured.
 
 Tests:
-- No test runner configured.
-- If adding tests, prefer Bun's built-in runner and document in `package.json`.
+- Test runner: Bun's built-in runner (`bun:test`).
+- Run all tests: `bun test` (also available as the `test` npm script).
+- Test files live in the `test/` directory as `*.test.ts`.
+- Keep tests hermetic: point `runAutoUpdate` at a temp `configDir` (via `node:os`
+  tmpdir) and clean it up after; avoid real network or package installs.
 
-## Single Test (If Added Later)
+## Single Test
 - `bun test path/to/file.test.ts`
 - `bun test -t "test name"`
 
