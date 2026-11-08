@@ -170,7 +170,7 @@ export async function runAutoUpdate(options: AutoUpdateOptions = {}): Promise<vo
     }
 
     await writeThrottleState(
-      { ...state, lastRun: now, lastSuccess: Date.now() },
+      { ...state, lastRun: now },
       { debug, configDir }
     );
     log('[auto-update] Update complete.');
