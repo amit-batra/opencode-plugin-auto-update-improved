@@ -1,12 +1,12 @@
 # Opencode Plugin Auto-Update
 
-[![npm version](https://img.shields.io/npm/v/opencode-plugin-auto-update.svg)](https://www.npmjs.com/package/opencode-plugin-auto-update)
+[![npm version](https://img.shields.io/npm/v/opencode-plugin-auto-update-improved.svg)](https://www.npmjs.com/package/opencode-plugin-auto-update-improved)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Bun](https://img.shields.io/badge/Bun-Fast-black?logo=bun)](https://bun.sh)
 
 **Keep your OpenCode environment fresh without lifting a finger.**
 
-`opencode-plugin-auto-update` is a lightweight, background-running plugin that
+`opencode-plugin-auto-update-improved` is a lightweight, background-running plugin that
 ensures your OpenCode plugins are always up-to-date. Zero-latency background
 updates for your OpenCode plugins. Includes 24h throttling and concurrency
 locking. It handles the heavy lifting of dependency management in the
@@ -45,7 +45,7 @@ If you are using an AI agent (OpenCode, Claude Code, Cursor, etc.), simply paste
 this:
 
 ```text
-Install the opencode-plugin-auto-update plugin by following: https://raw.githubusercontent.com/AnganSamadder/opencode-plugin-auto-update/main/README.md
+Install the opencode-plugin-auto-update-improved plugin by following: https://raw.githubusercontent.com/amit-batra/opencode-plugin-auto-update-improved/main/README.md
 ```
 
 <details>
@@ -54,17 +54,17 @@ Install the opencode-plugin-auto-update plugin by following: https://raw.githubu
 1. **Install the NPM package globally:**
 
    ```bash
-   bun add -g opencode-plugin-auto-update || npm install -g opencode-plugin-auto-update
+   bun add -g opencode-plugin-auto-update-improved || npm install -g opencode-plugin-auto-update-improved
    ```
 
 2. **Enable in OpenCode Config:**
-   Add `"opencode-plugin-auto-update"` to the `plugin` array in
+   Add `"opencode-plugin-auto-update-improved"` to the `plugin` array in
    `~/.config/opencode/opencode.json`.
 
    ```json
     {
       "plugin": [
-        "opencode-plugin-auto-update"
+        "opencode-plugin-auto-update-improved"
       ]
     }
    ```
@@ -80,19 +80,19 @@ Install the opencode-plugin-auto-update plugin by following: https://raw.githubu
 1. **Install the package:**
 
    ```bash
-   bun add -g opencode-plugin-auto-update
+   bun add -g opencode-plugin-auto-update-improved
    # or
-   npm install -g opencode-plugin-auto-update
+   npm install -g opencode-plugin-auto-update-improved
    ```
 
 2. **Enable the plugin:**
-   Add `"opencode-plugin-auto-update"` to your
+   Add `"opencode-plugin-auto-update-improved"` to your
    `~/.config/opencode/opencode.json`:
 
    ```json
     {
       "plugin": [
-        "opencode-plugin-auto-update"
+        "opencode-plugin-auto-update-improved"
       ]
     }
    ```
@@ -151,9 +151,51 @@ The plugin stores its state alongside the rest of your OpenCode configuration in
   output in your agent's console for details.
 - **Testing?** Use `OPENCODE_AUTO_UPDATE_BYPASS_THROTTLE=true` to force a run.
 
+## 🌱 Fork & Changes
+
+This project is a fork of
+[AnganSamadder/opencode-plugin-auto-update](https://github.com/AnganSamadder/opencode-plugin-auto-update),
+maintained by [amit-batra](https://github.com/amit-batra). During a code review
+of the upstream implementation, several bugs and rough edges were identified and
+fixed.
+
+### Bugs found in the upstream implementation
+
+1. **Throttle default of 0 hours.** The update interval default was `0`, meaning
+   every startup would attempt an update (no throttling at all).
+2. **Stale lock recovery.** A lock left behind by a crashed run could block all
+   future updates; there was no path to recover from a stale lock.
+3. **Throttle state written before work completed.** `lastRun` was recorded even
+   when the update itself failed, causing failed runs to count toward the
+   throttle window.
+4. **Dead data.** `ThrottleState.lastSuccess` and `LockData.hostname` were
+   written to disk but never read or used in any decision.
+5. **Stale-lock recovery gap (related to #2).** The recovery path did not force
+   acquiring the lock when a stale lock was detected.
+6. **Surprising history-log location.** The circular update-history file was
+   written to the parent of the current project directory, which is
+   undocumented, inconsistent with the other state files, and potentially
+   unwritable.
+7. **Robustness / minor issues.** A redundant double-read of the lock file
+   (a TOCTOU window) in `acquireLock`, and an unverified assumption about the
+   installed-package layout used to read versions.
+
+### Fixes made in this repo
+
+| # | Fix |
+| :--- | :--- |
+| 1 | Throttle default changed to `24` hours. |
+| 2 + 5 | `acquireLock` now recovers from stale locks (passes `force: true` when a stale lock is detected). |
+| 3 | `lastRun` is only written after a successful update; failed runs no longer count toward the throttle window. |
+| 4 | Removed the unused `lastSuccess` and `hostname` fields and their writers. |
+| 6 | The update-history file now lives in `~/.config/opencode/.auto-update-history.json`, consistent with the lock and throttle files. |
+| 7 | Eliminated the redundant lock re-read (staleness is computed from the already-read data), and added tests locking in the version-lookup layout. |
+
+All changes are covered by the hermetic test suite (`bun test`, 29 tests).
+
 ## 📄 License
 
-MIT © [Angan Samadder](https://github.com/AnganSamadder)
+MIT © [Angan Samadder](https://github.com/AnganSamadder) · Forked and maintained by [Amit Batra](https://github.com/amit-batra)
 
 ---
 

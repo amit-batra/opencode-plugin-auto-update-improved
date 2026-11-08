@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "opencode-plugin-auto-update",
+      "name": "opencode-plugin-auto-update-improved",
       "devDependencies": {
         "@types/bun": "^1.2.4",
         "@types/node": "^25.0.10",

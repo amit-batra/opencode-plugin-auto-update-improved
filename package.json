@@ -1,5 +1,5 @@
 {
-  "name": "opencode-plugin-auto-update",
+  "name": "opencode-plugin-auto-update-improved",
   "version": "0.3.3",
   "description": "OpenCode plugin that auto-updates plugins in the background",
   "type": "module",
@@ -26,13 +26,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/AnganSamadder/opencode-plugin-auto-update.git"
+    "url": "https://github.com/amit-batra/opencode-plugin-auto-update-improved.git"
   },
   "bugs": {
-    "url": "https://github.com/AnganSamadder/opencode-plugin-auto-update/issues"
+    "url": "https://github.com/amit-batra/opencode-plugin-auto-update-improved/issues"
   },
-  "homepage": "https://github.com/AnganSamadder/opencode-plugin-auto-update#readme",
-  "author": "Angan Samadder",
+  "homepage": "https://github.com/amit-batra/opencode-plugin-auto-update-improved#readme",
+  "author": "Amit Batra",
   "license": "MIT",
   "devDependencies": {
     "@types/bun": "^1.2.4",
