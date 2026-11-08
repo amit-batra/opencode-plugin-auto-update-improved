@@ -72,7 +72,7 @@ export async function runAutoUpdate(options: AutoUpdateOptions = {}): Promise<vo
 
   const debug = options.debug ?? envFlag('OPENCODE_AUTO_UPDATE_DEBUG');
   const ignoreThrottle = options.ignoreThrottle ?? envFlag('OPENCODE_AUTO_UPDATE_BYPASS_THROTTLE');
-  const intervalHours = options.intervalHours ?? envNumber('OPENCODE_AUTO_UPDATE_INTERVAL_HOURS', 0);
+  const intervalHours = options.intervalHours ?? envNumber('OPENCODE_AUTO_UPDATE_INTERVAL_HOURS', 24);
   const preservePinned = options.preservePinned ?? envFlag('OPENCODE_AUTO_UPDATE_PINNED');
   const configDir = options.configDir ?? DEFAULT_CONFIG_DIR;
   const configPath = join(configDir, 'opencode.json');
