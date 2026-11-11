@@ -91,4 +91,27 @@ describe('stale lock recovery', () => {
     const lock = await readLock(configDir);
     expect(lock.pid).toBe(FOREIGN_PID);
   });
+
+  test('a corrupt (0-byte) lock is reclaimed so auto-updates are not wedged', async () => {
+    const configDir = await makeConfigDir();
+    await writeFile(join(configDir, '.auto-update.lock'), '');
+
+    const acquired = await acquireLock({ force: true, debug: false, configDir });
+
+    expect(acquired).toBe(true);
+    const lock = await readLock(configDir);
+    expect(lock.pid).toBe(process.pid);
+    expect(lock.timestamp).toBeGreaterThan(Date.now() - 1000);
+  });
+
+  test('a corrupt (unparseable JSON) lock is reclaimed', async () => {
+    const configDir = await makeConfigDir();
+    await writeFile(join(configDir, '.auto-update.lock'), 'not-json');
+
+    const acquired = await acquireLock({ force: true, debug: false, configDir });
+
+    expect(acquired).toBe(true);
+    const lock = await readLock(configDir);
+    expect(lock.pid).toBe(process.pid);
+  });
 });

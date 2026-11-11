@@ -5,12 +5,14 @@
  * and JSON-based throttle state management.
  */
 
-import { readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
+import { open, readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
 const DEFAULT_CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const STALE_LOCK_MS = 2 * 60 * 60 * 1000; // 2 hours
+const ACQUIRE_MAX_ATTEMPTS = 3;
+const ACQUIRE_RETRY_DELAY_MS = 25;
 
 export interface LockData {
   pid: number;
@@ -81,54 +83,126 @@ export async function acquireLock(options: {
     // Ensure config directory exists
     await mkdir(resolvedConfigDir, { recursive: true });
 
-    // Check if lock already exists
-    try {
-      const existingLock = await readFile(lockFile, 'utf-8');
-      const lockData: LockData = JSON.parse(existingLock);
-      
-      // Check staleness from the already-read data (no second read)
-      const stale = isStaleLockData(lockData);
-      
-      if (stale && force) {
+    for (let attempt = 0; attempt < ACQUIRE_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        // Exclusive-create the lock file atomically. 'wx' fails with EEXIST if
+        // another run created it first, so only one concurrent run can win.
+        const handle = await open(lockFile, 'wx');
+        await handle.write(
+          JSON.stringify(
+            { pid: process.pid, timestamp: Date.now() } satisfies LockData,
+            null,
+            2
+          )
+        );
+        await handle.close();
+
         if (debug) {
-          console.log(`[lock] Stale lock detected (pid: ${lockData.pid}), forcing acquisition`);
+          console.log(`[lock] Lock acquired by pid ${process.pid}`);
         }
-        // Continue to acquire lock below
-      } else if (!stale) {
-        if (debug) {
-          console.log(`[lock] Lock already held by pid ${lockData.pid}`);
+        return true;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== 'EEXIST') {
+          if (debug) {
+            console.error('[lock] Failed to acquire lock:', error);
+          }
+          return false;
         }
-        return false;
-      } else {
-        // Stale but not forcing
+
+        // Another run created the lock. Decide whether to respect it.
+        const existingLock = await readLockData(lockFile);
+        if (!existingLock) {
+          // The file exists but does not parse as a lock. A valid lock always
+          // parses, so a persistently unparseable file is not a live lock. Back
+          // off on early attempts in case a concurrent writer is mid-write, but
+          // on the final attempt reclaim it so a corrupt/0-byte lock can never
+          // wedge auto-updates permanently.
+          if (attempt + 1 < ACQUIRE_MAX_ATTEMPTS) {
+            if (debug) {
+              console.log('[lock] Lock file partially written, retrying');
+            }
+            await delay(ACQUIRE_RETRY_DELAY_MS);
+            continue;
+          }
+          if (debug) {
+            console.log('[lock] Lock file is corrupt, reclaiming');
+          }
+          await reclaimLock(lockFile, debug);
+          return true;
+        }
+
+        const stale = isStaleLockData(existingLock);
+
+        if (stale && force) {
+          if (debug) {
+            console.log(`[lock] Stale lock detected (pid: ${existingLock.pid}), forcing acquisition`);
+          }
+          await reclaimLock(lockFile, debug);
+          return true;
+        }
+
         if (debug) {
-          console.log(`[lock] Stale lock exists but force=false`);
+          if (stale) {
+            console.log(`[lock] Stale lock exists but force=false`);
+          } else {
+            console.log(`[lock] Lock already held by pid ${existingLock.pid}`);
+          }
         }
         return false;
       }
-    } catch (error) {
-      // Lock file doesn't exist or is invalid, proceed to create
     }
 
-    // Create lock file
-    const lockData: LockData = {
-      pid: process.pid,
-      timestamp: Date.now(),
-    };
-
-    await writeFile(lockFile, JSON.stringify(lockData, null, 2), 'utf-8');
-    
     if (debug) {
-      console.log(`[lock] Lock acquired by pid ${process.pid}`);
+      console.error('[lock] Failed to acquire lock after retries');
     }
-    
-    return true;
+    return false;
   } catch (error) {
     if (debug) {
       console.error('[lock] Failed to acquire lock:', error);
     }
     return false;
   }
+}
+
+async function readLockData(lockPath: string): Promise<LockData | null> {
+  try {
+    const content = await readFile(lockPath, 'utf-8');
+    return JSON.parse(content) as LockData;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reclaim a lock that is corrupt (unparseable) or stale-and-forced by
+ * atomically replacing it with a fresh one. Removes the existing file first,
+ * then exclusive-creates a new lock; a concurrent winner is detected via EEXIST.
+ */
+async function reclaimLock(lockPath: string, debug: boolean): Promise<void> {
+  try {
+    await unlink(lockPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  const handle = await open(lockPath, 'wx');
+  await handle.write(
+    JSON.stringify(
+      { pid: process.pid, timestamp: Date.now() } satisfies LockData,
+      null,
+      2
+    )
+  );
+  await handle.close();
+  if (debug) {
+    console.log(`[lock] Lock reclaimed by pid ${process.pid}`);
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
