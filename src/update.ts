@@ -1,5 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { readFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 
@@ -9,6 +9,7 @@ import {
   releaseLock,
   writeThrottleState,
 } from './lock.js';
+import { writeAtomic } from './utils/atomic-write.js';
 
 const DEFAULT_CONFIG_DIR = join(homedir(), '.config', 'opencode');
 
@@ -191,9 +192,7 @@ async function readConfig(configPath: string): Promise<OpenCodeConfig | null> {
 }
 
 async function writeConfig(configPath: string, config: OpenCodeConfig): Promise<void> {
-  await mkdir(dirname(configPath), { recursive: true });
-  const contents = JSON.stringify(config, null, 2);
-  await writeFile(configPath, `${contents}\n`, 'utf-8');
+  await writeAtomic(configPath, `${JSON.stringify(config, null, 2)}\n`);
 }
 
 function getPluginList(config: OpenCodeConfig): {

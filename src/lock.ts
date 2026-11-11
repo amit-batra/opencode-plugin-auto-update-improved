@@ -5,9 +5,11 @@
  * and JSON-based throttle state management.
  */
 
-import { open, readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
+import { open, readFile, unlink, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+
+import { writeAtomic } from './utils/atomic-write.js';
 
 const DEFAULT_CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const STALE_LOCK_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -262,14 +264,11 @@ export async function writeThrottleState(
   options: { debug?: boolean; configDir?: string } = {}
 ): Promise<void> {
   const { debug = false, configDir } = options;
-  const { configDir: resolvedConfigDir, throttleFile } = resolvePaths(configDir);
+  const { throttleFile } = resolvePaths(configDir);
 
   try {
-    // Ensure config directory exists
-    await mkdir(resolvedConfigDir, { recursive: true });
+    await writeAtomic(throttleFile, JSON.stringify(state, null, 2));
 
-    await writeFile(throttleFile, JSON.stringify(state, null, 2), 'utf-8');
-    
     if (debug) {
       console.log('[throttle] State written:', state);
     }
