@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.5](https://github.com/amit-batra/opencode-plugin-auto-update-improved/compare/v0.3.4...v0.3.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* reclaim a crashed lock by pid liveness, not just age ([7c783b8](https://github.com/amit-batra/opencode-plugin-auto-update-improved/commit/7c783b8c78b6025c46ff0ce2e344fa5f36f4b3ef))
+* reclaim corrupt lock so a 0-byte lock file can't wedge auto-updates ([93203a3](https://github.com/amit-batra/opencode-plugin-auto-update-improved/commit/93203a3a045c2b06e7f5c2d3296abc7117a85599))
+* serialize history appends under the update lock ([5ebc028](https://github.com/amit-batra/opencode-plugin-auto-update-improved/commit/5ebc0288db23ff7c1e7417394b7e65656bb82a82))
+* throttle the no-plugins path for consistency ([cffa1f5](https://github.com/amit-batra/opencode-plugin-auto-update-improved/commit/cffa1f50dc09b26f0d3e3c0b067ced0fd89f1b0a))
+* write throttle and config files atomically ([461baa8](https://github.com/amit-batra/opencode-plugin-auto-update-improved/commit/461baa828b4c4af178beaa6a75a823f84a93ebfd))
+
 ## [0.3.4](https://github.com/amit-batra/opencode-plugin-auto-update-improved/compare/v0.3.3...v0.3.4) (2026-11-08)
 
 
