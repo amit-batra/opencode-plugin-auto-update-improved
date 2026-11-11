@@ -126,6 +126,7 @@ export async function runAutoUpdate(options: AutoUpdateOptions = {}): Promise<vo
 
     const { plugins } = getPluginList(normalized.config);
     if (!plugins || plugins.length === 0) {
+      await writeThrottleState({ ...state, lastRun: now }, { debug, configDir });
       log('[auto-update] No plugins found to update.');
       return;
     }

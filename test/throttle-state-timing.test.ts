@@ -95,4 +95,18 @@ describe('throttle state timing', () => {
     expect(isThrottled(second.logs)).toBe(false);
     expect(second.errors.some((message) => message.includes('Failed to update'))).toBe(true);
   });
+
+  test('a config with no plugins records lastRun and throttles the next run', async () => {
+    const configDir = await makeConfigDir();
+    await writeConfig(configDir, { });
+
+    const logs = await collectLogs(configDir);
+    expect(logs.some((message) => message.includes('No plugins found'))).toBe(true);
+
+    const state = await readThrottleState({ configDir });
+    expect(state.lastRun).toBeGreaterThan(0);
+
+    const second = await collectLogs(configDir);
+    expect(isThrottled(second)).toBe(true);
+  });
 });
