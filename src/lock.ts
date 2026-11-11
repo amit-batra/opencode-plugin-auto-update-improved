@@ -134,19 +134,27 @@ export async function acquireLock(options: {
           return true;
         }
 
-        const stale = isStaleLockData(existingLock);
+        const timeStale = isStaleLockData(existingLock);
+        const holderDead = !isProcessAlive(existingLock.pid);
+        // Reclaimable when the holder crashed (pid no longer alive) or the lock
+        // aged past the staleness window. PID liveness closes the gap where a
+        // crashed run leaves a fresh-timestamp lock that time alone never sees.
+        const reclaimable = timeStale || holderDead;
 
-        if (stale && force) {
+        if (reclaimable && force) {
           if (debug) {
-            console.log(`[lock] Stale lock detected (pid: ${existingLock.pid}), forcing acquisition`);
+            const reason = holderDead
+              ? `holder pid ${existingLock.pid} is not alive`
+              : `stale (age > ${STALE_LOCK_MS / 60000}m)`;
+            console.log(`[lock] Reclaimable lock detected (${reason}), forcing acquisition`);
           }
           await reclaimLock(lockFile, debug);
           return true;
         }
 
         if (debug) {
-          if (stale) {
-            console.log(`[lock] Stale lock exists but force=false`);
+          if (reclaimable) {
+            console.log('[lock] Reclaimable lock exists but force=false');
           } else {
             console.log(`[lock] Lock already held by pid ${existingLock.pid}`);
           }
@@ -173,6 +181,31 @@ async function readLockData(lockPath: string): Promise<LockData | null> {
     return JSON.parse(content) as LockData;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether the process that holds a lock is still alive.
+ *
+ * A `kill(pid, 0)` syscall probes the process table without sending a signal:
+ * it succeeds when the pid exists (EPERM means it exists but is not ours) and
+ * fails with ESRCH when no such process exists. A non-positive pid is treated
+ * as dead.
+ *
+ * This is deliberately conservative about PID reuse: if a crashed lock's pid was
+ * recycled by an unrelated live process, this reports "alive" and we respect the
+ * lock rather than clobber a live holder. The 2h time-based staleness check
+ * eventually covers that rare case.
+ */
+export function isProcessAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return false;
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 

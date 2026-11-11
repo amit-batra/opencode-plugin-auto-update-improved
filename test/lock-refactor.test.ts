@@ -7,6 +7,7 @@ import {
   acquireLock,
   releaseLock,
   isStaleLockData,
+  isProcessAlive,
   type LockData,
 } from '../src/lock.js';
 
@@ -47,6 +48,57 @@ describe('isStaleLockData (pure helper)', () => {
     const clock = Date.now();
     expect(isStaleLockData({ pid: FOREIGN_PID, timestamp: clock }, clock)).toBe(false);
     expect(isStaleLockData({ pid: FOREIGN_PID, timestamp: clock }, clock + STALE_LOCK_MS + 1)).toBe(true);
+  });
+});
+
+describe('isProcessAlive (pure helper)', () => {
+  test('the current process is alive', () => {
+    expect(isProcessAlive(process.pid)).toBe(true);
+  });
+
+  test('a non-positive pid is dead', () => {
+    expect(isProcessAlive(0)).toBe(false);
+    expect(isProcessAlive(-1)).toBe(false);
+  });
+
+  test('a non-integer pid is dead', () => {
+    expect(isProcessAlive(1.5)).toBe(false);
+  });
+
+  test('a high unused pid is dead', () => {
+    expect(isProcessAlive(2_000_000_000)).toBe(false);
+  });
+});
+
+describe('acquireLock reclaims a crashed holder by pid liveness', () => {
+  const DEAD_PID = 2_000_000_000;
+
+  test('a fresh-timestamp lock from a dead pid is reclaimed when forced', async () => {
+    const configDir = await makeConfigDir();
+    await writeLock(configDir, { pid: DEAD_PID, timestamp: Date.now() });
+
+    const acquired = await acquireLock({ force: true, debug: false, configDir });
+
+    expect(acquired).toBe(true);
+    await releaseLock({ debug: false, configDir });
+  });
+
+  test('a fresh-timestamp lock from a dead pid is NOT reclaimed without force', async () => {
+    const configDir = await makeConfigDir();
+    await writeLock(configDir, { pid: DEAD_PID, timestamp: Date.now() });
+
+    const acquired = await acquireLock({ force: false, debug: false, configDir });
+
+    expect(acquired).toBe(false);
+  });
+
+  test('a fresh-timestamp lock from a live pid is respected even when forced', async () => {
+    const configDir = await makeConfigDir();
+    await writeLock(configDir, { pid: process.pid, timestamp: Date.now() });
+
+    const acquired = await acquireLock({ force: true, debug: false, configDir });
+
+    expect(acquired).toBe(false);
   });
 });
 
