@@ -95,17 +95,17 @@ export default async function (ctx: PluginInput): Promise<PluginOutput> {
       ignoreThrottle: shouldIgnoreThrottle(),
       onLog: (message) => logEntries.push(message),
       onError: (message) => errorEntries.push(message),
-    })
-      .then(() => {
+      onSettled: async () => {
         const duration = Date.now() - startTime;
         const success = errorEntries.length === 0;
         const pluginsUpdated = extractUpdatedPlugins(logEntries);
-        
-        void appendCircularLog(
+        await appendCircularLog(
           CIRCULAR_LOG_PATH,
           formatLogEntry(pluginsUpdated, errorEntries, duration, success)
         );
-        
+      },
+    })
+      .then(() => {
         updateMessage = formatUpdateMessage(logEntries, errorEntries);
         void writeDebug(`update finished (logs=${logEntries.length}, errors=${errorEntries.length})`);
         notifyUser(updateMessage).catch((error) => {
@@ -113,11 +113,6 @@ export default async function (ctx: PluginInput): Promise<PluginOutput> {
         });
       })
       .catch((error) => {
-        const duration = Date.now() - startTime;
-        void appendCircularLog(
-          CIRCULAR_LOG_PATH,
-          formatLogEntry([], [String(error)], duration, false)
-        );
         void writeDebug(`runAutoUpdate error: ${String(error)}`);
       });
   };

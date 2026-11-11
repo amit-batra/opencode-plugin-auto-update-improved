@@ -1,5 +1,6 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
+
+import { writeAtomic } from './atomic-write.js';
 
 const MAX_ENTRIES = 5;
 
@@ -33,8 +34,7 @@ export async function appendCircularLog(
   if (log.entries.length > MAX_ENTRIES) {
     log.entries = log.entries.slice(-MAX_ENTRIES);
   }
-  await mkdir(dirname(logPath), { recursive: true });
-  await writeFile(logPath, JSON.stringify(log, null, 2) + '\n', 'utf-8');
+  await writeAtomic(logPath, JSON.stringify(log, null, 2) + '\n');
 }
 
 export function formatLogEntry(

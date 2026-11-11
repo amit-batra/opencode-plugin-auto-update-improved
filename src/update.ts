@@ -52,6 +52,7 @@ export interface AutoUpdateOptions {
   ignoreThrottle?: boolean;
   onLog?: (message: string) => void;
   onError?: (message: string) => void;
+  onSettled?: () => Promise<void> | void;
 }
 
 interface CommandResult {
@@ -178,6 +179,13 @@ export async function runAutoUpdate(options: AutoUpdateOptions = {}): Promise<vo
   } catch (err) {
     error('[auto-update] Failed to update plugins:', err);
   } finally {
+    if (options.onSettled) {
+      try {
+        await options.onSettled();
+      } catch (err) {
+        error('[auto-update] onSettled hook failed:', err);
+      }
+    }
     await releaseLock({ debug, configDir });
   }
 }

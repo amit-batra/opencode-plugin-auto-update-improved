@@ -111,3 +111,41 @@ describe('throttle default interval', () => {
     expect(isThrottled(afterLogs)).toBe(false);
   });
 });
+
+describe('onSettled hook', () => {
+  test('is invoked on the throttled settle path', async () => {
+    delete process.env.OPENCODE_AUTO_UPDATE_INTERVAL_HOURS;
+    const configDir = await makeConfigDir();
+    await seedThrottle(configDir, Date.now());
+
+    let settled = 0;
+    const logs: string[] = [];
+    await runAutoUpdate({
+      configDir,
+      onLog: (message) => logs.push(message),
+      onSettled: async () => {
+        settled += 1;
+      },
+    });
+
+    expect(settled).toBe(1);
+    expect(isThrottled(logs)).toBe(true);
+  });
+
+  test('is awaited before the lock is released', async () => {
+    delete process.env.OPENCODE_AUTO_UPDATE_INTERVAL_HOURS;
+    const configDir = await makeConfigDir();
+    await seedThrottle(configDir, Date.now());
+
+    const order: string[] = [];
+    await runAutoUpdate({
+      configDir,
+      onSettled: async () => {
+        order.push('settled');
+      },
+    });
+    order.push('done');
+
+    expect(order).toEqual(['settled', 'done']);
+  });
+});
